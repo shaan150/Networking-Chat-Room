@@ -254,14 +254,14 @@ class Client:
                 self.button_clicked = False
                 self.next_gui_state = self.button_state
 
-        elif self.current_gui_state == "HOST_CHAT":
+        elif current_gui_state == "HOST_CHAT":
             print("Hosting Server")
 
-        elif self.current_gui_state == "RUNNING_SERVER":
+        elif current_gui_state == "RUNNING_SERVER":
             print("[Client] Hosting Server]")
 
 
-        elif self.current_gui_state == "JOINING_CHAT":
+        elif current_gui_state == "JOINING_CHAT":
             """
             Never reaches this point
             """
@@ -293,7 +293,7 @@ class Client:
             self.send_btn.config(font=("Arial", 12))
             self.send_btn.pack(padx=20, pady=5)
             self.gui_done = True
-        elif self.current_gui_state == "FAILED_TO_HOST":
+        elif current_gui_state == "FAILED_TO_HOST":
             tkinter.messagebox.showerror("Unable To Host","Unable To Host, As Port Is Unavailable, Please Try Again Later")
             self.hosting_server = False
             self.host["state"] = "normal"
