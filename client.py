@@ -38,9 +38,14 @@ class Server:
 
             current_server_state = next_server_state
     # broadcast
+    
+    """
+    Sends message to all clients
+    
+    """
     def broadcast(self, msg, client):
         for c in self.clients:
-            self.send(msg, c)
+            self.send(msg, c) 
 
     def handle_client(self, client):
         global current_server_state, next_server_state
@@ -73,8 +78,8 @@ class Server:
             msg_length = len(message)
             send_length = str(msg_length).encode(format)
             send_length += b' ' * (12 - len(send_length))
-            client.send(send_length)
-            client.send(message)
+            client.send(send_length) #sends message length
+            client.send(message) #snds message 
             return True
         except ConnectionResetError:
             if not self.clients[client]:
@@ -98,8 +103,8 @@ class Server:
                 next_server_state = "SERVER_RUNNING"
             elif current_server_state == "SERVER_RUNNING":
                 print("[SERVER_RUNNING] Sending Nickname")
-                self.send("Nickname:", conn)
-                nickname = self.receive(conn)
+                self.send("Nickname:", conn) # Sends Request For Nickname
+                nickname = self.receive(conn) # Receives Nickname
                 if not nickname:
                     conn.close()
                 else:
@@ -108,18 +113,18 @@ class Server:
                     welcome_msg = f"{nickname} connected to the server!\n"
                     self.broadcast(welcome_msg, conn)
                     print("[SERVER_RUNNING] Initiating New Client Thread")
-                    thread = threading.Thread(target=self.handle_client, args=(conn,))
+                    thread = threading.Thread(target=self.handle_client, args=(conn,)) #Creates thread for each new user 
                     thread.start()
 
                 next_server_state = "SERVER_RUNNING"
             current_server_state = next_server_state
-
+      
     def receive(conn):
         try:
-            msg_length = conn.recv(12).decode(format)
+            msg_length = conn.recv(12).decode(format) # Retrieves message length
             if msg_length:
                 msg_length = int(msg_length)
-                msg = conn.recv(msg_length).decode(format)
+                msg = conn.recv(msg_length).decode(format) #Retrieve message based on message length
 
                 return msg
             else:
@@ -139,7 +144,7 @@ class Client:
         self.main_server_ip = host
         self.main_server_port = port
         self.gui_done = False
-        self.state_thread = threading.Thread(target=self.state_manager)
+        self.state_thread = threading.Thread(target=self.state_manager) #creates new thread to handle states for the gui
         self.state_thread.daemon = True
         self.state_thread.start()
         self.gui_loop()  # starts the gui
@@ -149,6 +154,9 @@ class Client:
         global current_gui_state, next_gui_state
         while current_gui_state != "END_PROGRAM":
             if current_gui_state == "START_STATE":
+                """
+                Handles the first state, which is the main menu in the gui, it checks which button has been pressed and moves to the state based on that
+                """
                 if self.hosting_server:
                     print("Initalising Hosting")
                     next_gui_state = "HOST_CHAT"
@@ -158,18 +166,23 @@ class Client:
                     next_gui_state = "START_STATE"
                     print(next_gui_state)
             elif current_gui_state == "HOST_CHAT":
+                """
+                Handles the hosting of the clients own server, it'll create a new thread for the server and move the running server state
+                """
                 try:
                     print("Hosting Server")
                     server_thread = threading.Thread(target=Server, args=(socket.gethostbyname(socket.gethostname()), 50001))
                     server_thread.start()
                     next_gui_state = "RUNNING_SERVER"
                 except:
-                    next_gui_state = "FAILED_TO_HOST"
+                    next_gui_state = "FAILED_TO_HOST" #If it fails to create server it hit thsi state
             elif current_gui_state == "RUNNING_SERVER":
                 print("[RUNNING_SERVER] Client Successfully Ran Server")
-                self.host = socket.gethostbyname(socket.gethostname())
-                self.port = 50001
-
+                self.host = socket.gethostbyname(socket.gethostname()) # Gets details of host ip from get host name method
+                self.port = 50001 
+                """
+                messsage box doesn't work on GUI loop, unsure why?
+                """
                 msg = tkinter.Tk()
                 msg.withdraw()
 
@@ -182,6 +195,10 @@ class Client:
                     next_gui_state = "JOIN_CHAT"
             elif current_gui_state == "JOIN_CHAT":
                 print("[JOIN_CHAT] User Joining Chat")
+                """
+                checks if GUI has been generated, then conencts locally to the server
+                this never happens, i believe line 174 may be causing this?
+                """
                 if self.gui_done:
                     self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     self.s.connect((self.host, self.host))
@@ -210,6 +227,9 @@ class Client:
         self.chat = tkinter.Tk()
         if current_gui_state == "START_STATE":
             if not self.gui_done:
+                """
+                Generates Main Menu
+                """
                 self.chat.withdraw()
                 self.main_menu = Toplevel(self.chat)
                 self.main_menu.title("Main Menu")
@@ -242,6 +262,9 @@ class Client:
 
 
         elif self.current_gui_state == "JOINING_CHAT":
+            """
+            Never reaches this point
+            """
             self.main_menu.destroy()
             self.chat_room = Toplevel(self.chat)
             self.chat_room.title("chat_room")
@@ -289,6 +312,9 @@ class Client:
 
 
     def write(self):
+        """
+        Writes message in input box, if greater than 256 bytes then error
+        """
         if len(self.input_area.get('1.0', 'end')) <= 256:
             msg = f"{self.nickname}: {self.input_area.get('1.0', 'end')}"
             self.send(msg)
@@ -297,20 +323,22 @@ class Client:
             tkinter.messagebox.showerror("Message Too Long", "Please Enter A Smaller Message")
 
     def stop(self):
-        global current_server_state
-
+        global current_gui_state
+        
         print("Ending Session")
-        self.gui_done = False
+        current_gui_state = "DISCONNECTED"
         try:
             self.s.close()
         except:
             print("Connection Already Closed")
-        current_server_state = "END_SERVER"
-        self.current_client_state = "TERMINATED"
+        current_gui_state = "END_PROGRAM"
         self.chat.destroy()
         sys.exit(0)
 
     def handle_message(self):
+        """
+        handles the receiving and sending of messages, and displays them in scroll text area
+        """
         while self.current_gui_state != "DISCONNECTED":
             print("client running")
             print("receiving message")
